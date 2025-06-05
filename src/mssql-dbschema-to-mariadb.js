@@ -1,12 +1,15 @@
 const mssql = require('mssql');
 const mysql = require('mysql2/promise');
+const fs = require('fs');
+const path = require('path');
 
-// 1. 설정 정보
+// 설정
 const mssqlConfig = {
-  user: 'sahara',
-  password: '1111',
-  server: 'localhost',
-  database: 'mymssql',
+  user: 'mssql_user',
+  password: 'mssql_password',
+  server: 'mssql_host',
+  port: 1433,
+  database: 'mssql_database',
   options: {
     encrypt: false,
     trustServerCertificate: true
@@ -14,13 +17,13 @@ const mssqlConfig = {
 };
 
 const mariadbConfig = {
-  host: 'localhost',
-  user: 'sahara',
-  password: '1111',
-  database: 'mydb'
+  host: 'mariadb_host',
+  user: 'mariadb_user',
+  password: 'mariadb_password',
+  database: 'mariadb_database'
 };
 
-// 2. 데이터 타입 변환
+// 타입 변환
 function convertDataType(type, maxLength, precision, scale) {
   type = type.toLowerCase();
   switch (type) {
@@ -40,34 +43,40 @@ function convertDataType(type, maxLength, precision, scale) {
     case 'time': return 'TIME';
     case 'decimal':
     case 'numeric': return `DECIMAL(${precision || 10},${scale || 0})`;
-    case 'float': return 'FLOAT';
+    case 'float':
     case 'real': return 'FLOAT';
     case 'money': return 'DECIMAL(19,4)';
     default: return 'TEXT';
   }
 }
 
-// 3. 실행 함수
-async function migrateSchema() {
+// 메인 함수
+async function migrateSchemaFromFile() {
   try {
-    console.log('🔗 MSSQL 연결 중...');
+    const tableFilePath = path.join(__dirname, 'tables.txt');
+    if (!fs.existsSync(tableFilePath)) {
+      console.error('❌ tables.txt 파일이 없습니다.');
+      return;
+    }
+
+    const tableNames = fs.readFileSync(tableFilePath, 'utf-8')
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    if (tableNames.length === 0) {
+      console.error('❌ tables.txt 파일에 테이블이 없습니다.');
+      return;
+    }
+
+    console.log(`📄 테이블 목록 (${tableNames.length}개):`, tableNames);
+
     const mssqlPool = await mssql.connect(mssqlConfig);
-
-    const tablesResult = await mssqlPool.request().query(`
-      SELECT TABLE_NAME
-      FROM INFORMATION_SCHEMA.TABLES
-      WHERE TABLE_TYPE = 'BASE TABLE'
-    `);
-
-    const tables = tablesResult.recordset.map(row => row.TABLE_NAME);
-    console.log(`📦 테이블 수: ${tables.length}`);
-
     const mariadbConn = await mysql.createConnection(mariadbConfig);
 
-    for (const tableName of tables) {
+    for (const tableName of tableNames) {
       console.log(`\n🔄 [${tableName}] 테이블 처리 중...`);
 
-      // 컬럼 메타 + 설명 가져오기
       const columnsResult = await mssqlPool.request().query(`
         SELECT 
           c.COLUMN_NAME, c.DATA_TYPE, c.CHARACTER_MAXIMUM_LENGTH, 
@@ -82,6 +91,11 @@ async function migrateSchema() {
       `);
 
       const columns = columnsResult.recordset;
+
+      if (columns.length === 0) {
+        console.warn(`⚠️ 테이블 [${tableName}]에 컬럼이 없습니다. 건너뜁니다.`);
+        continue;
+      }
 
       const columnDefs = columns.map(col => {
         const dataType = convertDataType(
@@ -112,4 +126,4 @@ ${columnDefs.join(',\n')}
   }
 }
 
-migrateSchema();
+migrateSchemaFromFile();
