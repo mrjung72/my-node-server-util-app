@@ -9,7 +9,7 @@ const mssqlConfig = {
   user: process.env.REMOTEDB_USER,
   password: process.env.REMOTEDB_PASSWORD,
   server: process.env.REMOTEDB_HOST,
-  port: process.env.REMOTEDB_PORT,
+  port: Number(process.env.REMOTEDB_PORT)||1433,
   database: process.env.REMOTEDB_NAME,
   options: {
     encrypt: true,
@@ -19,7 +19,7 @@ const mssqlConfig = {
 
 const mariadbConfig = {
   host: process.env.LOCALDB_HOST,
-  port: process.env.LOCALDB_PORT,
+  port: Number(process.env.LOCALDB_PORT)||3306,
   database: process.env.LOCALDB_NAME,
   user: process.env.LOCALDB_USER,
   password: process.env.LOCALDB_PASSWORD
@@ -55,7 +55,7 @@ function convertDataType(type, maxLength, precision, scale) {
 // 메인 함수
 async function migrateSchemaFromFile() {
   try {
-    const tableFilePath = path.join(__dirname, 'tables.txt');
+    const tableFilePath = path.join(__dirname, '../resources/tables.txt');
     if (!fs.existsSync(tableFilePath)) {
       console.error('❌ tables.txt 파일이 없습니다.');
       return;
@@ -64,7 +64,7 @@ async function migrateSchemaFromFile() {
     const tableNames = fs.readFileSync(tableFilePath, 'utf-8')
       .split('\n')
       .map(line => line.trim())
-      .filter(Boolean);
+      .filter(line => /^[a-zA-Z]/.test(line)); 
 
     if (tableNames.length === 0) {
       console.error('❌ tables.txt 파일에 테이블이 없습니다.');
