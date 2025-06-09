@@ -52,14 +52,16 @@ function convertDataType(type, maxLength, precision, scale) {
   }
 }
 
-// 메인 함수
+// --- 인자에서 파일경로 받기 ---
+const tableFilePath = process.argv[2];
+if (!fs.existsSync(tableFilePath)) {
+  console.error(`❌ ${tableFilePath} 파일이 없습니다.`);
+  process.exit(1);
+}
+
+  // 메인 함수
 async function migrateSchemaFromFile() {
   try {
-    const tableFilePath = path.join(__dirname, '../resources/tables.txt');
-    if (!fs.existsSync(tableFilePath)) {
-      console.error('❌ tables.txt 파일이 없습니다.');
-      return;
-    }
 
     const tableNames = fs.readFileSync(tableFilePath, 'utf-8')
       .split('\n')
