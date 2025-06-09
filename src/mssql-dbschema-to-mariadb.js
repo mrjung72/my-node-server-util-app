@@ -2,25 +2,27 @@ const mssql = require('mssql');
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config(); // 환경변수 로드
 
 // 설정
 const mssqlConfig = {
-  user: 'mssql_user',
-  password: 'mssql_password',
-  server: 'mssql_host',
-  port: 1433,
-  database: 'mssql_database',
+  user: process.env.REMOTEDB_USER,
+  password: process.env.REMOTEDB_PASSWORD,
+  server: process.env.REMOTEDB_HOST,
+  port: process.env.REMOTEDB_PORT,
+  database: process.env.REMOTEDB_NAME,
   options: {
-    encrypt: false,
+    encrypt: true,
     trustServerCertificate: true
   }
 };
 
 const mariadbConfig = {
-  host: 'mariadb_host',
-  user: 'mariadb_user',
-  password: 'mariadb_password',
-  database: 'mariadb_database'
+  host: process.env.LOCALDB_HOST,
+  port: process.env.LOCALDB_PORT,
+  database: process.env.LOCALDB_NAME,
+  user: process.env.LOCALDB_USER,
+  password: process.env.LOCALDB_PASSWORD
 };
 
 // 타입 변환
